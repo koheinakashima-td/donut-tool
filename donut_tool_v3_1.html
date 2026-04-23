@@ -565,7 +565,7 @@ async function loadBothSheets() {
   try {
     const data = await fetchGas(gasUrl, { type: 'pos' });
     posData = data.rows.map(r => ({
-      date: r.date, storeId: r.storeId, product: r.product, dept: r.dept, qty: r.qty
+      date: r.date, storeId: parseInt(r.storeId), product: r.product, dept: r.dept, qty: parseFloat(r.qty)
     }));
     localStorage.setItem(LS_GAS_URL, gasUrl);
     const now = new Date().toLocaleString('ja-JP');
