@@ -99,7 +99,8 @@
   }
   .btn-upload:hover { border-color: var(--blue); background: var(--blue-light); }
   .file-status {
-    font-size: 0.78rem; color: var(--ink-2);
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.05em;
+    color: var(--ink-2);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
 
@@ -616,12 +617,7 @@ function loadPosFile(file) {
 }
 
 function updateHeader() {
-  const dates = [...new Set(posData.map(r=>r.date))].sort();
-  if (dates.length) {
-    const p0 = dates[0].split('/'); const p1 = dates[dates.length-1].split('/');
-    document.getElementById('headerSub').textContent =
-      `取引データ: ${parseInt(p0[1])}/${parseInt(p0[2])} 〜 ${parseInt(p1[1])}/${parseInt(p1[2])}（${dates.length}日分）`;
-  }
+  document.getElementById('headerSub').textContent = 'POSデータから翌日の製造数を自動で按分します';
 }
 
 // ── 取引履歴CSVパース ─────────────────────────────
