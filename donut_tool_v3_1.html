@@ -569,8 +569,8 @@ async function loadBothSheets() {
     }));
     localStorage.setItem(LS_GAS_URL, gasUrl);
     const now = new Date().toLocaleString('ja-JP');
-    const cachedAt = data._cachedAt ? data._cachedAt : now;
-    setStatus(`読み込み完了 · ${cachedAt}`, 'pos', true);
+    const updatedAt = data.updatedAt ? `自動更新: ${data.updatedAt}` : '手動読み込み';
+    setStatus(`読み込み完了 · ${updatedAt}`, 'pos', true);
     posOk = true;
   } catch(e) { setStatus(e.message, 'pos', false); }
 
