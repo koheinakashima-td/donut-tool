@@ -574,11 +574,30 @@ async function loadBothSheets() {
     posOk = true;
   } catch(e) { setStatus(e.message, 'pos', false); }
 
-  // 製造計画
+  // 製造計画（当月＋翌月）
   setStatus('製造計画を取得中…', 'plan', null);
   try {
-    const month = new Date().getMonth() + 1;
-    const data = await fetchGas(gasUrl, { type: 'plan', month });
+    const now       = new Date();
+    const month     = now.getMonth() + 1;
+    const nextMonth = month === 12 ? 1 : month + 1;
+    // 当月と翌月を両方取得してマージ
+    const [resCur, resNext] = await Promise.allSettled([
+      fetchGas(gasUrl, { type: 'plan', month }),
+      fetchGas(gasUrl, { type: 'plan', month: nextMonth }),
+    ]);
+    const merged = { stores: {} };
+    if (resNext.status === 'fulfilled') {
+      for (const [sid, days] of Object.entries(resNext.value.stores || {})) {
+        merged.stores[sid] = days;
+      }
+    }
+    if (resCur.status === 'fulfilled') {
+      for (const [sid, days] of Object.entries(resCur.value.stores || {})) {
+        if (!merged.stores[sid]) merged.stores[sid] = {};
+        Object.assign(merged.stores[sid], days);
+      }
+    }
+    const data = merged;
     planData = {};
     for (const [sid, days] of Object.entries(data.stores)) {
       planData[parseInt(sid)] = {};
@@ -764,11 +783,15 @@ function calculate() {
   const oldestStr = dateToStr(oldest);
 
   const recentData = posData.filter(r => {
-    const d = r.date.replace(/\//g,'-');
+    const d = String(r.date).replace(/\//g,'-');
     const c = cutoffStr.replace(/\//g,'-');
     const o = oldestStr.replace(/\//g,'-');
     return d >= o && d <= c;
   });
+
+  // デバッグ用：コンソールで確認
+  console.log('cutoff:', cutoffStr, 'oldest:', oldestStr, 'data件数:', recentData.length,
+    'サンプル日付:', posData.length > 0 ? posData[0].date : 'なし');
 
   const actualDates = [...new Set(recentData.map(r=>r.date))].sort();
 
