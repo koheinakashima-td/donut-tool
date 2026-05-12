@@ -393,6 +393,16 @@
     display: block;
   }
 
+  /* ドラッグ&ドロップ */
+  .draggable-row { cursor: grab; }
+  .draggable-row:active { cursor: grabbing; }
+  .draggable-row.drag-over { border-top: 2px solid var(--blue); }
+  .drag-handle {
+    display: inline-block; width: 16px; text-align: center;
+    color: var(--ink-3); font-size: 0.9rem; margin-right: 6px;
+    cursor: grab; user-select: none;
+  }
+
   input[type="url"] {
     transition: border-color 0.15s;
   }
@@ -496,11 +506,29 @@ const FIXED_BY_STORE = {
   5: ['つばめ','もちっとシュガー','チョコオールドファッション','プレーン','シナモンロール','シュガードーナツ','きび焚糖','和三盆','黒ごまきなこ','オールドファッション'],
   8: ['つばめ','もちっとシュガー','チョコオールドファッション','プレーン','シナモンロール','シュガードーナツ','きび焚糖','和三盆','黒ごまきなこ','オールドファッション','豆乳ホイップ'],
 };
-const ALL_FIXED = [...new Set(Object.values(FIXED_BY_STORE).flat())];
+const ALL_FIXED_DEFAULT = [...new Set(Object.values(FIXED_BY_STORE).flat())];
+
+function getFixedOrder() {
+  try {
+    const saved = localStorage.getItem(LS_PROD_ORDER);
+    if (saved) {
+      const order = JSON.parse(saved);
+      // 新商品が追加されている場合は末尾に追加
+      const missing = ALL_FIXED_DEFAULT.filter(p => !order.includes(p));
+      return [...order, ...missing];
+    }
+  } catch(e) {}
+  return [...ALL_FIXED_DEFAULT];
+}
+
+function saveFixedOrder(order) {
+  localStorage.setItem(LS_PROD_ORDER, JSON.stringify(order));
+}
 const MOCHITTO_PLAIN_GROUP = ['きび焚糖','和三盆','黒ごまきなこ'];
 const MOCHITTO_PLAIN_LABEL = 'もちっとプレーン';
 
-const LS_GAS_URL  = 'donut_gas_url';
+const LS_GAS_URL   = 'donut_gas_url';
+const LS_PROD_ORDER = 'donut_prod_order';
 const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbxAWJt57n_vPczAYCFMyAbAu7Q2_1r3OLaA7aXtvXaQ0X117VGcYrB7dHz69YD3spU/exec';
 const DAYS_BACK   = 28; // 直近4週
 
@@ -863,14 +891,15 @@ function renderTable(targetDateStr, calcResults, totals, actualDates) {
   const mochhittoSet = new Set(MOCHITTO_PLAIN_GROUP);
   let groupRendered = false;
 
-  for(const prod of ALL_FIXED){
-    if(!AUTO_STORES.some(sid=>(FIXED_BY_STORE[sid]||[]).includes(prod))) continue;
+  const fixedOrder = getFixedOrder();
+  for(const prod of fixedOrder){
+    if(!AUTO_STORES.some(sid=>(FIXED_BY_STORE[sid]||[]).includes(prod))) continue; // skip
 
     if(mochhittoSet.has(prod)){
       if(!groupRendered){
         groupRendered = true;
         let parentTotal = 0;
-        html += `<tr><td class="td-product group-parent">${MOCHITTO_PLAIN_LABEL}<span class="toggle-btn" onclick="toggleGroup(this)" style="margin-right:0;margin-left:0.45rem;">+</span></td>`;
+        html += `<tr class="draggable-row" data-prod="${MOCHITTO_PLAIN_LABEL}" draggable="true"><td class="td-product group-parent"><span class="drag-handle">⠿</span>${MOCHITTO_PLAIN_LABEL}<span class="toggle-btn" onclick="toggleGroup(this)" style="margin-right:0;margin-left:0.45rem;">+</span></td>`;
         for(const sid of AUTO_STORES){
           const r = calcResults[sid];
           const hasGroup = MOCHITTO_PLAIN_GROUP.some(g=>(FIXED_BY_STORE[sid]||[]).includes(g));
@@ -898,7 +927,7 @@ function renderTable(targetDateStr, calcResults, totals, actualDates) {
     }
 
     let rowTotal = 0;
-    html += `<tr><td class="td-product">${prod}</td>`;
+    html += `<tr class="draggable-row" data-prod="${prod}" draggable="true"><td class="td-product"><span class="drag-handle">⠿</span>${prod}</td>`;
     for(const sid of AUTO_STORES){
       const r = calcResults[sid];
       if(!(FIXED_BY_STORE[sid]||[]).includes(prod)){ html += `<td class="td-num na">—</td>`; }
@@ -943,6 +972,7 @@ function renderTable(targetDateStr, calcResults, totals, actualDates) {
 
   document.getElementById('results').style.display = 'block';
   document.getElementById('results').scrollIntoView({behavior:'smooth'});
+  initDragSort();
 }
 </script>
 </body>
