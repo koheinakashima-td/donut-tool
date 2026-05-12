@@ -861,6 +861,76 @@ function calcStore(storeId, recentData, totalQty) {
 }
 
 // ── テーブル描画 ──────────────────────────────────
+// ── ドラッグ&ドロップ並び替え ─────────────────────────
+let dragSrcProd  = null;
+let lastCalcArgs = null;
+
+function initDragSort() {
+  document.querySelectorAll('.draggable-row').forEach(row => {
+    row.setAttribute('draggable', 'true');
+    row.addEventListener('dragstart', e => {
+      dragSrcProd = row.getAttribute('data-prod');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragSrcProd);
+      setTimeout(() => row.style.opacity = '0.4', 0);
+    });
+    row.addEventListener('dragend', () => {
+      row.style.opacity = '';
+      document.querySelectorAll('.draggable-row').forEach(r => r.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      document.querySelectorAll('.draggable-row').forEach(r => r.classList.remove('drag-over'));
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      const tgtProd = row.getAttribute('data-prod');
+      if (!dragSrcProd || dragSrcProd === tgtProd) return;
+      reorderProducts(dragSrcProd, tgtProd);
+      dragSrcProd = null;
+    });
+    row.addEventListener('touchstart', e => {
+      dragSrcProd = row.getAttribute('data-prod');
+      row.style.background = 'var(--row-alt)';
+    }, { passive: true });
+    row.addEventListener('touchend', e => {
+      row.style.background = '';
+      const ty = e.changedTouches[0].clientY;
+      let tgtRow = null;
+      document.querySelectorAll('.draggable-row').forEach(r => {
+        if (r === row) return;
+        const rect = r.getBoundingClientRect();
+        if (ty >= rect.top && ty <= rect.bottom) tgtRow = r;
+      });
+      if (tgtRow) {
+        const tgtProd = tgtRow.getAttribute('data-prod');
+        if (dragSrcProd && dragSrcProd !== tgtProd) reorderProducts(dragSrcProd, tgtProd);
+      }
+      dragSrcProd = null;
+    }, { passive: true });
+  });
+}
+
+function reorderProducts(srcProd, tgtProd) {
+  const expand = p => p === MOCHITTO_PLAIN_LABEL ? [...MOCHITTO_PLAIN_GROUP] : [p];
+  const order    = getFixedOrder();
+  const srcProds = expand(srcProd);
+  const tgtProds = expand(tgtProd);
+  const origSrcIdx = order.findIndex(p => srcProds.includes(p));
+  const origTgtIdx = order.findIndex(p => tgtProds.includes(p));
+  let newOrder = order.filter(p => !srcProds.includes(p));
+  const tgtIdx = newOrder.findIndex(p => tgtProds.includes(p));
+  if (tgtIdx >= 0) {
+    if (origSrcIdx < origTgtIdx) newOrder.splice(tgtIdx + tgtProds.length, 0, ...srcProds);
+    else newOrder.splice(tgtIdx, 0, ...srcProds);
+  } else {
+    newOrder.push(...srcProds);
+  }
+  saveFixedOrder(newOrder);
+  if (lastCalcArgs) renderTable(...lastCalcArgs);
+}
+
 function toggleGroup(btn) {
   const isOpen = btn.classList.contains('open');
   document.querySelectorAll('.mochitto-child').forEach(r => r.style.display = isOpen ? 'none' : '');
@@ -869,6 +939,7 @@ function toggleGroup(btn) {
 }
 
 function renderTable(targetDateStr, calcResults, totals, actualDates) {
+  lastCalcArgs = [targetDateStr, calcResults, totals, actualDates]; // 再描画用に保存
   const p = targetDateStr.split('-');
   const dow = DOW_JP[safeDow(targetDateStr.replace(/-/g,'/'))];
   document.getElementById('dateLine').textContent =
