@@ -495,8 +495,9 @@
 
 <script>
 // ── 定数 ──────────────────────────────────────────
-const STORE_NAMES = {1:'平尾店', 3:'ソラリア店', 5:'香椎店', 8:'赤坂店'};
-const AUTO_STORES = [1,3,5,8];
+const STORE_NAMES = {1:'平尾店', 3:'ソラリア店', 5:'香椎店', 8:'赤坂店', 7:'催事'};
+const AUTO_STORES = [1,3,5,8,7];
+const PROXY_STORE  = {7: 3}; // 催事はソラリアの比率を使用
 const EXCLUDE_DEPTS = ['袋・BOX','ドリンク','Uber Eats','Rocket Now'];
 const DOW_JP = ['日','月','火','水','木','金','土'];
 
@@ -505,6 +506,7 @@ const FIXED_BY_STORE = {
   3: ['つばめ','もちっとシュガー','チョコオールドファッション','プレーン','シナモンロール','シュガードーナツ','きび焚糖','和三盆','黒ごまきなこ','オールドファッション'],
   5: ['つばめ','もちっとシュガー','チョコオールドファッション','プレーン','シナモンロール','シュガードーナツ','きび焚糖','和三盆','黒ごまきなこ','オールドファッション'],
   8: ['つばめ','もちっとシュガー','チョコオールドファッション','プレーン','シナモンロール','シュガードーナツ','きび焚糖','和三盆','黒ごまきなこ','オールドファッション','豆乳ホイップ'],
+  7: ['つばめ','もちっとシュガー','チョコオールドファッション','プレーン','シナモンロール','シュガードーナツ','きび焚糖','和三盆','黒ごまきなこ','オールドファッション'],
 };
 const ALL_FIXED_DEFAULT = [...new Set(Object.values(FIXED_BY_STORE).flat())];
 
@@ -835,7 +837,9 @@ function calculate() {
 function calcStore(storeId, recentData, totalQty) {
   const fixedProds = FIXED_BY_STORE[storeId] || [];
   const fixedSet = new Set(fixedProds);
-  const sd = recentData.filter(r=>r.storeId===storeId);
+  // 実績がない店舗はプロキシ店舗のデータを使う
+  const dataStoreId = PROXY_STORE[storeId] || storeId;
+  const sd = recentData.filter(r=>r.storeId===dataStoreId);
 
   // 全商品の総販売数（直近28日）
   const grandTotal = sd.reduce((s,r)=>s+r.qty, 0);
